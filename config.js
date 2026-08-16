@@ -9,5 +9,5 @@
 
 window.PUSH_CONFIG = Object.freeze({
   ONESIGNAL_APP_ID: 'ISI_ONESIGNAL_APP_ID',
-  GAS_WEB_APP_URL: 'ISI_URL_WEB_APP_GAS'
+  GAS_WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbwB1O84zB2mga8ujkKSXqrGI3UHJnsb9JZTU9wH2kz5cBQSR5BLc0W2Tb7KYSW8dcLY/exec'
 });
