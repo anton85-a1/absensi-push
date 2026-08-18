@@ -7,29 +7,35 @@
 <title>Aktivasi Notifikasi Guru</title>
 
 <script src="./config.js"></script>
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script
+  src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"
+  defer>
+</script>
 
 <style>
 body{
   font-family:system-ui,-apple-system,Segoe UI,sans-serif;
   background:#f3f4f6;
   margin:0;
-  color:#1f2937
+  color:#1f2937;
 }
+
 .wrap{
   min-height:100vh;
   display:grid;
   place-items:center;
-  padding:20px
+  padding:20px;
 }
+
 .card{
   width:min(430px,100%);
   background:#fff;
   border:1px solid #e5e7eb;
   border-radius:18px;
   padding:28px;
-  box-shadow:0 8px 30px rgba(0,0,0,.06)
+  box-shadow:0 8px 30px rgba(0,0,0,.06);
 }
+
 .icon{
   width:52px;
   height:52px;
@@ -39,19 +45,22 @@ body{
   display:grid;
   place-items:center;
   margin:0 auto 16px;
-  font-size:25px
+  font-size:25px;
 }
+
 h1{
   text-align:center;
   font-size:20px;
-  margin:0 0 8px
+  margin:0 0 8px;
 }
+
 .sub{
   text-align:center;
   color:#6b7280;
   font-size:13px;
-  line-height:1.55
+  line-height:1.55;
 }
+
 button{
   width:100%;
   border:0;
@@ -62,26 +71,31 @@ button{
   font-weight:700;
   font-size:14px;
   cursor:pointer;
-  margin-top:20px
+  margin-top:20px;
 }
+
 button:disabled{
   opacity:.6;
-  cursor:not-allowed
+  cursor:not-allowed;
 }
+
 .status{
   margin-top:14px;
   font-size:12px;
   line-height:1.55;
-  text-align:center
+  text-align:center;
 }
+
 .ok{
-  color:#059669
+  color:#059669;
 }
+
 .err{
-  color:#dc2626
+  color:#dc2626;
 }
+
 .muted{
-  color:#6b7280
+  color:#6b7280;
 }
 </style>
 </head>
@@ -111,9 +125,13 @@ button:disabled{
 <script>
 (() => {
 
-  const cfg = window.PUSH_CONFIG || {};
+  'use strict';
 
-  const qs = new URLSearchParams(location.search);
+  const cfg =
+    window.PUSH_CONFIG || {};
+
+  const qs =
+    new URLSearchParams(location.search);
 
   const token =
     (qs.get('activate') || '').trim();
@@ -130,8 +148,18 @@ button:disabled{
   const status =
     document.getElementById('status');
 
+  let activation = null;
+  let oneSignalInstance = null;
 
-  function setStatus(text, cls='muted') {
+
+  /* =========================================================
+     STATUS
+     ========================================================= */
+
+  function setStatus(
+    text,
+    cls = 'muted'
+  ){
 
     status.textContent = text;
 
@@ -141,118 +169,159 @@ button:disabled{
   }
 
 
-  /*
-   * JSONP ke Google Apps Script.
-   */
-  function jsonp(params) {
+  /* =========================================================
+     JSONP -> GAS
+     ========================================================= */
 
-    return new Promise((resolve, reject) => {
+  function jsonp(params){
 
-      const callback =
-        '__pushHostCb_' +
-        Date.now() +
-        '_' +
-        Math.random()
-          .toString(36)
-          .slice(2);
+    return new Promise(
+      (resolve,reject) => {
 
-      const script =
-        document.createElement('script');
+        const callback =
+          '__pushHostCb_' +
+          Date.now() +
+          '_' +
+          Math.random()
+            .toString(36)
+            .slice(2);
 
-      let done = false;
+        const script =
+          document.createElement('script');
 
-      const cleanup = () => {
-
-        try {
-          delete window[callback];
-        } catch(e) {}
-
-        script.remove();
-
-      };
+        let done = false;
 
 
-      const finish = (fn, value) => {
+        const cleanup = () => {
 
-        if (done) return;
+          try{
+            delete window[callback];
+          }catch(e){}
 
-        done = true;
+          script.remove();
 
-        clearTimeout(timer);
-
-        cleanup();
-
-        fn(value);
-
-      };
+        };
 
 
-      const timer = setTimeout(() => {
+        const finish =
+          (fn,value) => {
 
-        finish(
-          reject,
-          new Error(
-            'Google Apps Script tidak merespons. Pastikan Web App sudah dideploy sebagai versi terbaru.'
-          )
-        );
+            if(done)
+              return;
 
-      }, 20000);
+            done = true;
 
+            clearTimeout(timer);
 
-      window[callback] =
-        data => finish(resolve, data);
+            cleanup();
 
+            fn(value);
 
-      const url =
-        new URL(cfg.GAS_WEB_APP_URL);
+          };
 
 
-      Object.entries(params)
-        .forEach(([k, v]) => {
+        const timer =
+          setTimeout(
+            () => {
 
-          url.searchParams.set(
-            k,
-            String(v)
+              finish(
+                reject,
+                new Error(
+                  'Google Apps Script tidak merespons. Pastikan Web App sudah dideploy sebagai versi terbaru.'
+                )
+              );
+
+            },
+            20000
           );
 
-        });
+
+        window[callback] =
+          data =>
+            finish(
+              resolve,
+              data
+            );
 
 
-      url.searchParams.set(
-        'callback',
-        callback
-      );
+        let url;
+
+        try{
+
+          url =
+            new URL(
+              cfg.GAS_WEB_APP_URL
+            );
+
+        }catch(error){
+
+          finish(
+            reject,
+            new Error(
+              'URL Google Apps Script tidak valid.'
+            )
+          );
+
+          return;
+
+        }
 
 
-      script.src =
-        url.toString();
+        Object.entries(params)
+          .forEach(
+            ([key,value]) => {
+
+              url.searchParams.set(
+                key,
+                String(value)
+              );
+
+            }
+          );
 
 
-      script.onerror = () => {
-
-        finish(
-          reject,
-          new Error(
-            'Gagal menghubungi Google Apps Script.'
-          )
+        url.searchParams.set(
+          'callback',
+          callback
         );
 
-      };
+
+        script.src =
+          url.toString();
 
 
-      document.head.appendChild(script);
+        script.onerror =
+          () => {
 
-    });
+            finish(
+              reject,
+              new Error(
+                'Gagal menghubungi Google Apps Script.'
+              )
+            );
+
+          };
+
+
+        document.head
+          .appendChild(script);
+
+      }
+    );
 
   }
 
 
-  /*
-   * Memeriksa link aktivasi melalui GAS.
-   */
-  async function verifyActivation() {
+  /* =========================================================
+     VERIFIKASI LINK AKTIVASI
+     ========================================================= */
 
-    if (!token || !madrasahId) {
+  async function verifyActivation(){
+
+    if(
+      !token ||
+      !madrasahId
+    ){
 
       throw new Error(
         'Link aktivasi tidak lengkap.'
@@ -261,10 +330,10 @@ button:disabled{
     }
 
 
-    if (
+    if(
       !cfg.GAS_WEB_APP_URL ||
       !cfg.ONESIGNAL_APP_ID
-    ) {
+    ){
 
       throw new Error(
         'Konfigurasi PushHost belum lengkap.'
@@ -276,19 +345,22 @@ button:disabled{
     const result =
       await jsonp({
 
-        push: 'activationInfo',
+        push:
+          'activationInfo',
 
-        activate: token,
+        activate:
+          token,
 
-        m: madrasahId
+        m:
+          madrasahId
 
       });
 
 
-    if (
+    if(
       !result ||
       !result.success
-    ) {
+    ){
 
       throw new Error(
         result?.message ||
@@ -303,140 +375,325 @@ button:disabled{
   }
 
 
-  /*
-   * Inisialisasi OneSignal.
-   *
-   * PENTING:
-   * File worker berada di:
-   *
-   * /absensi-push/OneSignalSDKWorker.js
-   *
-   * sehingga path harus menunjuk ke folder tersebut.
-   */
-  async function initOneSignal() {
+  /* =========================================================
+     ONESIGNAL INIT
+     ========================================================= */
+
+  async function initOneSignal(){
 
     window.OneSignalDeferred =
       window.OneSignalDeferred || [];
 
 
-    return new Promise((resolve, reject) => {
+    return new Promise(
+      (resolve,reject) => {
 
-      window.OneSignalDeferred.push(
-        async function(OneSignal) {
+        window.OneSignalDeferred.push(
+          async function(OneSignal){
 
-          try {
+            try{
 
-            await OneSignal.init({
+              await OneSignal.init({
 
-              appId:
-                cfg.ONESIGNAL_APP_ID,
+                appId:
+                  cfg.ONESIGNAL_APP_ID,
 
-              serviceWorkerPath:
-                'absensi-push/OneSignalSDKWorker.js',
+                /*
+                 * DIPERTAHANKAN DARI BASELINE.
+                 */
+                serviceWorkerPath:
+                  'absensi-push/OneSignalSDKWorker.js',
 
-              serviceWorkerParam: {
+                serviceWorkerParam: {
 
-                scope:
-                  '/absensi-push/'
+                  scope:
+                    '/absensi-push/'
 
-              },
+                },
 
-              autoResubscribe:
-                true
+                autoResubscribe:
+                  true
 
-            });
+              });
 
 
-            resolve(OneSignal);
+              resolve(
+                OneSignal
+              );
 
-          } catch(error) {
+            }catch(error){
 
-            reject(error);
+              reject(error);
+
+            }
 
           }
-
-        }
-      );
-
-    });
-
-  }
-
-
-  /*
-   * Menunggu sampai OneSignal benar-benar
-   * mendapatkan Push Subscription + Push Token.
-   *
-   * Subscription ID saja TIDAK cukup.
-   */
-  async function waitForPushSubscription(
-    OneSignal,
-    timeoutMs = 30000
-  ) {
-
-    const started =
-      Date.now();
-
-
-    while (
-      Date.now() - started <
-      timeoutMs
-    ) {
-
-      const subscription =
-        OneSignal
-          ?.User
-          ?.PushSubscription;
-
-
-      const subscriptionId =
-        subscription?.id || null;
-
-
-      const pushToken =
-        subscription?.token || null;
-
-
-      const optedIn =
-        subscription?.optedIn === true;
-
-
-      if (
-        subscriptionId &&
-        pushToken &&
-        optedIn
-      ) {
-
-        return {
-
-          subscriptionId,
-
-          pushToken
-
-        };
+        );
 
       }
-
-
-      await new Promise(
-        resolve =>
-          setTimeout(resolve, 500)
-      );
-
-    }
-
-
-    throw new Error(
-      'OneSignal belum mendapatkan Push Token. Pastikan izin notifikasi sudah diizinkan dan Service Worker berhasil aktif.'
     );
 
   }
 
 
-  /*
-   * Proses aktivasi.
-   */
-  async function activate() {
+  /* =========================================================
+     TUNGGU PUSH SUBSCRIPTION
+     
+     PATCH UTAMA:
+     Gunakan listener "change", bukan hanya polling.
+     
+     OneSignal dapat membuat ID/token beberapa saat setelah
+     permission/optIn berubah.
+     ========================================================= */
+
+  function waitForPushSubscription(
+    OneSignal,
+    timeoutMs = 60000
+  ){
+
+    const subscription =
+      OneSignal
+        ?.User
+        ?.PushSubscription;
+
+
+    if(!subscription){
+
+      return Promise.reject(
+        new Error(
+          'OneSignal Push Subscription belum tersedia.'
+        )
+      );
+
+    }
+
+
+    function readState(){
+
+      return {
+
+        id:
+          subscription.id ||
+          null,
+
+        token:
+          subscription.token ||
+          null,
+
+        optedIn:
+          subscription.optedIn === true
+
+      };
+
+    }
+
+
+    function ready(state){
+
+      return (
+        !!state.id &&
+        !!state.token &&
+        state.optedIn === true
+      );
+
+    }
+
+
+    /*
+     * Periksa state yang sudah tersedia.
+     */
+
+    const initial =
+      readState();
+
+
+    if(
+      ready(initial)
+    ){
+
+      return Promise.resolve({
+
+        subscriptionId:
+          initial.id,
+
+        pushToken:
+          initial.token
+
+      });
+
+    }
+
+
+    return new Promise(
+      (resolve,reject) => {
+
+        let finished = false;
+
+
+        const cleanup = () => {
+
+          try{
+
+            subscription.removeEventListener(
+              'change',
+              onChange
+            );
+
+          }catch(error){}
+
+          clearTimeout(
+            timer
+          );
+
+        };
+
+
+        const finish =
+          (fn,value) => {
+
+            if(finished)
+              return;
+
+            finished = true;
+
+            cleanup();
+
+            fn(value);
+
+          };
+
+
+        const onChange =
+          event => {
+
+            console.log(
+              '[OneSignal] PushSubscription change:',
+              event
+            );
+
+
+            const current =
+              event?.current ||
+              readState();
+
+
+            if(
+              !ready(current)
+            ){
+
+              return;
+
+            }
+
+
+            finish(
+              resolve,
+              {
+
+                subscriptionId:
+                  current.id,
+
+                pushToken:
+                  current.token
+
+              }
+            );
+
+          };
+
+
+        const timer =
+          setTimeout(
+            () => {
+
+              const current =
+                readState();
+
+
+              if(
+                ready(current)
+              ){
+
+                finish(
+                  resolve,
+                  {
+
+                    subscriptionId:
+                      current.id,
+
+                    pushToken:
+                      current.token
+
+                  }
+                );
+
+                return;
+
+              }
+
+
+              finish(
+                reject,
+                new Error(
+                  'OneSignal belum mendapatkan Push Token dalam 60 detik. Pastikan izin notifikasi sudah diizinkan dan Service Worker aktif.'
+                )
+              );
+
+            },
+            timeoutMs
+          );
+
+
+        /*
+         * PENTING:
+         * Listener dipasang SEBELUM optIn().
+         */
+
+        subscription.addEventListener(
+          'change',
+          onChange
+        );
+
+
+        /*
+         * Cek sekali lagi setelah listener
+         * terpasang untuk menghindari race condition.
+         */
+
+        const afterListener =
+          readState();
+
+
+        if(
+          ready(afterListener)
+        ){
+
+          finish(
+            resolve,
+            {
+
+              subscriptionId:
+                afterListener.id,
+
+              pushToken:
+                afterListener.token
+
+            }
+          );
+
+        }
+
+      }
+    );
+
+  }
+
+
+  /* =========================================================
+     PROSES AKTIVASI
+     ========================================================= */
+
+  async function activate(){
 
     btn.disabled = true;
 
@@ -444,12 +701,13 @@ button:disabled{
       'MEMPROSES...';
 
 
-    try {
+    try{
 
-      /*
-       * Pastikan informasi aktivasi tersedia.
-       */
-      if (!activation) {
+      /* -----------------------------------------------------
+         1. Pastikan activation info tersedia
+         ----------------------------------------------------- */
+
+      if(!activation){
 
         activation =
           await verifyActivation();
@@ -457,21 +715,26 @@ button:disabled{
       }
 
 
-      /*
-       * Inisialisasi OneSignal.
-       */
+      /* -----------------------------------------------------
+         2. Init OneSignal
+         ----------------------------------------------------- */
+
       const OneSignal =
         await initOneSignal();
 
+      oneSignalInstance =
+        OneSignal;
 
-      /*
-       * Pastikan browser mendukung Web Push.
-       */
-      if (
+
+      /* -----------------------------------------------------
+         3. Cek dukungan Web Push
+         ----------------------------------------------------- */
+
+      if(
         !OneSignal
           .Notifications
           .isPushSupported()
-      ) {
+      ){
 
         throw new Error(
           'Browser/perangkat ini tidak mendukung Web Push.'
@@ -480,17 +743,14 @@ button:disabled{
       }
 
 
-      /*
-       * Cek permission sebelum meminta.
-       */
-      const permissionBefore =
-        Notification.permission;
+      /* -----------------------------------------------------
+         4. Permission
+         ----------------------------------------------------- */
 
-
-      if (
-        permissionBefore ===
+      if(
+        Notification.permission ===
         'denied'
-      ) {
+      ){
 
         throw new Error(
           'Izin notifikasi pada situs ini ditolak. Reset izin situs ini lalu buka ulang link aktivasi.'
@@ -499,18 +759,21 @@ button:disabled{
       }
 
 
-      /*
-       * Minta izin notifikasi.
-       */
+      setStatus(
+        'Meminta izin notifikasi...',
+        'muted'
+      );
+
+
       await OneSignal
         .Notifications
         .requestPermission();
 
 
-      if (
+      if(
         Notification.permission !==
         'granted'
-      ) {
+      ){
 
         throw new Error(
           'Izin notifikasi belum diberikan.'
@@ -519,52 +782,109 @@ button:disabled{
       }
 
 
-      /*
-       * External ID guru.
-       */
-      const externalId =
-        madrasahId +
-        ':' +
+      /* -----------------------------------------------------
+         5. External ID
+         ----------------------------------------------------- */
+
+      const kodeGuru =
         String(
-          activation.kodeGuru || ''
+          activation.kodeGuru ||
+          ''
         );
 
 
-      /*
-       * Hubungkan user OneSignal
-       * dengan guru.
-       */
+      if(!kodeGuru){
+
+        throw new Error(
+          'Kode guru dari server tidak tersedia.'
+        );
+
+      }
+
+
+      const externalId =
+        madrasahId +
+        ':' +
+        kodeGuru;
+
+
+      setStatus(
+        'Menghubungkan perangkat dengan guru...',
+        'muted'
+      );
+
+
       await OneSignal.login(
         externalId
       );
 
 
-      /*
-       * Pastikan subscription opt-in.
-       */
+      /* -----------------------------------------------------
+         6. PASANG LISTENER TERLEBIH DAHULU
+         ----------------------------------------------------- */
+
+      setStatus(
+        'Menyiapkan Push Subscription...',
+        'muted'
+      );
+
+
+      const subscriptionPromise =
+        waitForPushSubscription(
+          OneSignal,
+          60000
+        );
+
+
+      /* -----------------------------------------------------
+         7. OPT-IN
+         
+         Listener sudah aktif sebelum optIn().
+         Ini inti perbaikan.
+         ----------------------------------------------------- */
+
       await OneSignal
         .User
         .PushSubscription
         .optIn();
 
 
-      /*
-       * Tunggu Subscription ID +
-       * Push Token + optedIn.
-       */
+      /* -----------------------------------------------------
+         8. Tunggu ID + TOKEN + optedIn
+         ----------------------------------------------------- */
+
+      setStatus(
+        'Menunggu Push Token...',
+        'muted'
+      );
+
+
       const subscription =
-        await waitForPushSubscription(
-          OneSignal
-        );
+        await subscriptionPromise;
 
 
-      /*
-       * Simpan subscription ke GAS.
-       *
-       * Kegagalan push tidak membatalkan
-       * proses ABSENSI karena fungsi ini
-       * hanya digunakan pada aktivasi.
-       */
+      console.log(
+        '[OneSignal] Subscription siap:',
+        {
+          subscriptionId:
+            subscription.subscriptionId,
+
+          pushTokenReady:
+            !!subscription.pushToken
+        }
+      );
+
+
+      /* -----------------------------------------------------
+         9. REGISTER KE GAS
+         ----------------------------------------------------- */
+
+      setStatus(
+        'Mendaftarkan perangkat ke sistem...',
+        'muted'
+      );
+
+
       const saved =
         await jsonp({
 
@@ -582,15 +902,15 @@ button:disabled{
 
           deviceLabel:
             navigator.userAgent
-              .slice(0, 120)
+              .slice(0,120)
 
         });
 
 
-      if (
+      if(
         !saved ||
         !saved.success
-      ) {
+      ){
 
         throw new Error(
           saved?.message ||
@@ -600,9 +920,10 @@ button:disabled{
       }
 
 
-      /*
-       * Berhasil.
-       */
+      /* -----------------------------------------------------
+         10. BERHASIL
+         ----------------------------------------------------- */
+
       btn.textContent =
         '✅ NOTIFIKASI AKTIF';
 
@@ -616,7 +937,7 @@ button:disabled{
       btn.disabled = true;
 
 
-    } catch(error) {
+    }catch(error){
 
       console.error(
         'Push activation error:',
@@ -631,7 +952,8 @@ button:disabled{
       );
 
 
-      btn.disabled = false;
+      btn.disabled =
+        false;
 
 
       btn.textContent =
@@ -642,19 +964,13 @@ button:disabled{
   }
 
 
-  /*
-   * Menyimpan data aktivasi
-   * setelah link berhasil diverifikasi.
-   */
-  let activation = null;
+  /* =========================================================
+     PEMERIKSAAN AWAL LINK
+     ========================================================= */
 
+  (async function start(){
 
-  /*
-   * Pemeriksaan awal link.
-   */
-  (async function start() {
-
-    try {
+    try{
 
       activation =
         await verifyActivation();
@@ -666,7 +982,8 @@ button:disabled{
         ' terverifikasi. Klik tombol untuk mengaktifkan notifikasi.';
 
 
-      btn.disabled = false;
+      btn.disabled =
+        false;
 
 
       setStatus(
@@ -675,7 +992,7 @@ button:disabled{
       );
 
 
-    } catch(error) {
+    }catch(error){
 
       console.error(
         'Activation verification error:',
@@ -697,6 +1014,10 @@ button:disabled{
 
   })();
 
+
+  /* =========================================================
+     BUTTON
+     ========================================================= */
 
   btn.addEventListener(
     'click',
