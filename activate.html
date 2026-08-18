@@ -5,162 +5,707 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#059669">
 <title>Aktivasi Notifikasi Guru</title>
+
 <script src="./config.js"></script>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+
 <style>
-body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f3f4f6;margin:0;color:#1f2937}.wrap{min-height:100vh;display:grid;place-items:center;padding:20px}.card{width:min(430px,100%);background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:28px;box-shadow:0 8px 30px rgba(0,0,0,.06)}.icon{width:52px;height:52px;border-radius:16px;background:#ecfdf5;color:#059669;display:grid;place-items:center;margin:0 auto 16px;font-size:25px}h1{text-align:center;font-size:20px;margin:0 0 8px}.sub{text-align:center;color:#6b7280;font-size:13px;line-height:1.55}button{width:100%;border:0;border-radius:12px;padding:13px 16px;background:#059669;color:#fff;font-weight:700;font-size:14px;cursor:pointer;margin-top:20px}button:disabled{opacity:.6;cursor:not-allowed}.status{margin-top:14px;font-size:12px;line-height:1.55;text-align:center}.ok{color:#059669}.err{color:#dc2626}.muted{color:#6b7280}
+body{
+  font-family:system-ui,-apple-system,Segoe UI,sans-serif;
+  background:#f3f4f6;
+  margin:0;
+  color:#1f2937
+}
+.wrap{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  padding:20px
+}
+.card{
+  width:min(430px,100%);
+  background:#fff;
+  border:1px solid #e5e7eb;
+  border-radius:18px;
+  padding:28px;
+  box-shadow:0 8px 30px rgba(0,0,0,.06)
+}
+.icon{
+  width:52px;
+  height:52px;
+  border-radius:16px;
+  background:#ecfdf5;
+  color:#059669;
+  display:grid;
+  place-items:center;
+  margin:0 auto 16px;
+  font-size:25px
+}
+h1{
+  text-align:center;
+  font-size:20px;
+  margin:0 0 8px
+}
+.sub{
+  text-align:center;
+  color:#6b7280;
+  font-size:13px;
+  line-height:1.55
+}
+button{
+  width:100%;
+  border:0;
+  border-radius:12px;
+  padding:13px 16px;
+  background:#059669;
+  color:#fff;
+  font-weight:700;
+  font-size:14px;
+  cursor:pointer;
+  margin-top:20px
+}
+button:disabled{
+  opacity:.6;
+  cursor:not-allowed
+}
+.status{
+  margin-top:14px;
+  font-size:12px;
+  line-height:1.55;
+  text-align:center
+}
+.ok{
+  color:#059669
+}
+.err{
+  color:#dc2626
+}
+.muted{
+  color:#6b7280
+}
 </style>
 </head>
+
 <body>
-<div class="wrap"><main class="card"><div class="icon">🔔</div><h1>Aktivasi Notifikasi Guru</h1><p id="intro" class="sub">Memeriksa link aktivasi...</p><button id="allow" disabled>🔔 IZINKAN NOTIFIKASI</button><div id="status" class="status muted"></div></main></div>
+
+<div class="wrap">
+  <main class="card">
+
+    <div class="icon">🔔</div>
+
+    <h1>Aktivasi Notifikasi Guru</h1>
+
+    <p id="intro" class="sub">
+      Memeriksa link aktivasi...
+    </p>
+
+    <button id="allow" disabled>
+      🔔 IZINKAN NOTIFIKASI
+    </button>
+
+    <div id="status" class="status muted"></div>
+
+  </main>
+</div>
+
 <script>
 (() => {
-'use strict';
-const cfg=window.PUSH_CONFIG||{};
-const qs=new URLSearchParams(location.search);
-const token=(qs.get('activate')||'').trim();
-const madrasahId=(qs.get('m')||'').trim();
-const intro=document.getElementById('intro');
-const btn=document.getElementById('allow');
-const status=document.getElementById('status');
-let activation=null;
 
-function setStatus(text,cls='muted'){status.textContent=text;status.className='status '+cls;}
+  const cfg = window.PUSH_CONFIG || {};
 
-function jsonp(params){
- return new Promise((resolve,reject)=>{
-  const callback='__pushHostCb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-  const script=document.createElement('script'); let done=false;
-  const cleanup=()=>{try{delete window[callback]}catch(e){}script.remove()};
-  const finish=(fn,value)=>{if(done)return;done=true;clearTimeout(timer);cleanup();fn(value)};
-  const timer=setTimeout(()=>finish(reject,new Error('Google Apps Script tidak merespons. Pastikan Web App sudah dideploy sebagai versi terbaru.')),20000);
-  window[callback]=data=>finish(resolve,data);
-  let url; try{url=new URL(cfg.GAS_WEB_APP_URL)}catch(e){finish(reject,new Error('URL Google Apps Script tidak valid.'));return}
-  Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,String(v)));
-  url.searchParams.set('callback',callback);
-  script.src=url.toString();
-  script.onerror=()=>finish(reject,new Error('Gagal menghubungi Google Apps Script.'));
-  document.head.appendChild(script);
- });
-}
+  const qs = new URLSearchParams(location.search);
 
-async function verifyActivation(){
- if(!token||!madrasahId)throw new Error('Link aktivasi tidak lengkap.');
- if(!cfg.GAS_WEB_APP_URL||!cfg.ONESIGNAL_APP_ID)throw new Error('Konfigurasi PushHost belum lengkap.');
- const result=await jsonp({push:'activationInfo',activate:token,m:madrasahId});
- if(!result||!result.success)throw new Error(result?.message||'Link aktivasi tidak valid atau sudah kedaluwarsa.');
- return result.data;
-}
+  const token =
+    (qs.get('activate') || '').trim();
 
-async function initOneSignal(){
- window.OneSignalDeferred=window.OneSignalDeferred||[];
- return new Promise((resolve,reject)=>{
-  window.OneSignalDeferred.push(async function(OneSignal){
-   try{
-    await OneSignal.init({
-     appId:cfg.ONESIGNAL_APP_ID,
-     serviceWorkerPath:'absensi-push/OneSignalSDKWorker.js',
-     serviceWorkerParam:{scope:'/absensi-push/'},
-     autoResubscribe:true
-    });
-    resolve(OneSignal);
-   }catch(error){reject(error)}
-  });
- });
-}
+  const madrasahId =
+    (qs.get('m') || '').trim();
 
-/*
- * PATCH: listener dipasang SEBELUM optIn().
- * Polling saja tidak dipakai sebagai mekanisme utama.
- * ID + token + optedIn harus tersedia sebelum register ke GAS.
- */
-function waitForPushSubscription(OneSignal,timeoutMs=60000){
- const subscription=OneSignal?.User?.PushSubscription;
- if(!subscription)return Promise.reject(new Error('OneSignal Push Subscription belum tersedia.'));
- const read=()=>({id:subscription.id||null,token:subscription.token||null,optedIn:subscription.optedIn===true});
- const ready=s=>!!s.id&&!!s.token&&s.optedIn===true;
- const initial=read();
- if(ready(initial))return Promise.resolve({subscriptionId:initial.id,pushToken:initial.token});
- return new Promise((resolve,reject)=>{
-  let finished=false;
-  let timer;
-  const cleanup=()=>{try{subscription.removeEventListener('change',onChange)}catch(e){}clearTimeout(timer)};
-  const finish=(fn,value)=>{if(finished)return;finished=true;cleanup();fn(value)};
-  const onChange=event=>{
-   console.log('[OneSignal] PushSubscription change:',event);
-   const current=event?.current||read();
-   if(ready(current))finish(resolve,{subscriptionId:current.id,pushToken:current.token});
-  };
-  subscription.addEventListener('change',onChange);
-  timer=setTimeout(()=>{
-   const current=read();
-   if(ready(current))finish(resolve,{subscriptionId:current.id,pushToken:current.token});
-   else finish(reject,new Error('OneSignal belum mendapatkan Push Token dalam 60 detik. Pastikan izin notifikasi sudah diizinkan dan Service Worker aktif.'));
-  },timeoutMs);
-  const after=read();
-  if(ready(after))finish(resolve,{subscriptionId:after.id,pushToken:after.token});
- });
-}
+  const intro =
+    document.getElementById('intro');
 
-async function activate(){
- btn.disabled=true;btn.textContent='MEMPROSES...';
- try{
-  if(!activation)activation=await verifyActivation();
-  const OneSignal=await initOneSignal();
-  if(!OneSignal.Notifications.isPushSupported())throw new Error('Browser/perangkat ini tidak mendukung Web Push.');
-  if(Notification.permission==='denied')throw new Error('Izin notifikasi pada situs ini ditolak. Reset izin situs ini lalu buka ulang link aktivasi.');
-  setStatus('Meminta izin notifikasi...');
-  await OneSignal.Notifications.requestPermission();
-  if(Notification.permission!=='granted')throw new Error('Izin notifikasi belum diberikan.');
-  const kodeGuru=String(activation.kodeGuru||'');
-  if(!kodeGuru)throw new Error('Kode guru dari server tidak tersedia.');
-  const externalId=madrasahId+':'+kodeGuru;
-  setStatus('Menghubungkan perangkat dengan guru...');
-  await OneSignal.login(externalId);
+  const btn =
+    document.getElementById('allow');
 
-  /* Listener harus aktif sebelum optIn. */
-  setStatus('Menyiapkan Push Subscription...');
-  const subscriptionPromise=waitForPushSubscription(OneSignal,60000);
-  await OneSignal.User.PushSubscription.optIn();
-  setStatus('Menunggu Push Token...');
-  const subscription=await subscriptionPromise;
+  const status =
+    document.getElementById('status');
 
-  console.log('[OneSignal] Subscription siap:',{subscriptionId:subscription.subscriptionId,pushTokenReady:!!subscription.pushToken,externalId});
 
-  setStatus('Mendaftarkan perangkat ke sistem...');
-  const saved=await jsonp({push:'register',activate:token,m:madrasahId,subscriptionId:subscription.subscriptionId,deviceLabel:navigator.userAgent.slice(0,120)});
-  if(!saved||!saved.success)throw new Error(saved?.message||'Subscription gagal disimpan.');
+  function setStatus(text, cls='muted') {
+
+    status.textContent = text;
+
+    status.className =
+      'status ' + cls;
+
+  }
+
 
   /*
-   * Penting: status ini berarti SDK sudah menghasilkan subscription
-   * dan GAS berhasil menyimpan ID. Dashboard OneSignal tetap harus
-   * diverifikasi terpisah; halaman tidak memiliki akses REST API untuk
-   * membuktikan keberadaan record backend OneSignal.
+   * JSONP ke Google Apps Script.
    */
-  btn.textContent='✅ NOTIFIKASI AKTIF';
-  setStatus('Perangkat berhasil diaktifkan dan didaftarkan ke sistem.','ok');
-  btn.disabled=true;
- }catch(error){
-  console.error('Push activation error:',error);
-  setStatus(error?.message||'Gagal mengaktifkan notifikasi.','err');
-  btn.disabled=false;btn.textContent='🔔 IZINKAN NOTIFIKASI';
- }
-}
+  function jsonp(params) {
 
-(async function start(){
- try{
-  activation=await verifyActivation();
-  intro.textContent='Kode guru '+(activation.kodeGuru||'-')+' terverifikasi. Klik tombol untuk mengaktifkan notifikasi.';
-  btn.disabled=false;setStatus('Siap mengaktifkan notifikasi.');
- }catch(error){
-  console.error('Activation verification error:',error);
-  intro.textContent='Aktivasi tidak dapat dilanjutkan.';
-  setStatus(error?.message||'Link aktivasi tidak valid.','err');
- }
-})();
+    return new Promise((resolve, reject) => {
 
-btn.addEventListener('click',activate);
+      const callback =
+        '__pushHostCb_' +
+        Date.now() +
+        '_' +
+        Math.random()
+          .toString(36)
+          .slice(2);
+
+      const script =
+        document.createElement('script');
+
+      let done = false;
+
+      const cleanup = () => {
+
+        try {
+          delete window[callback];
+        } catch(e) {}
+
+        script.remove();
+
+      };
+
+
+      const finish = (fn, value) => {
+
+        if (done) return;
+
+        done = true;
+
+        clearTimeout(timer);
+
+        cleanup();
+
+        fn(value);
+
+      };
+
+
+      const timer = setTimeout(() => {
+
+        finish(
+          reject,
+          new Error(
+            'Google Apps Script tidak merespons. Pastikan Web App sudah dideploy sebagai versi terbaru.'
+          )
+        );
+
+      }, 20000);
+
+
+      window[callback] =
+        data => finish(resolve, data);
+
+
+      const url =
+        new URL(cfg.GAS_WEB_APP_URL);
+
+
+      Object.entries(params)
+        .forEach(([k, v]) => {
+
+          url.searchParams.set(
+            k,
+            String(v)
+          );
+
+        });
+
+
+      url.searchParams.set(
+        'callback',
+        callback
+      );
+
+
+      script.src =
+        url.toString();
+
+
+      script.onerror = () => {
+
+        finish(
+          reject,
+          new Error(
+            'Gagal menghubungi Google Apps Script.'
+          )
+        );
+
+      };
+
+
+      document.head.appendChild(script);
+
+    });
+
+  }
+
+
+  /*
+   * Memeriksa link aktivasi melalui GAS.
+   */
+  async function verifyActivation() {
+
+    if (!token || !madrasahId) {
+
+      throw new Error(
+        'Link aktivasi tidak lengkap.'
+      );
+
+    }
+
+
+    if (
+      !cfg.GAS_WEB_APP_URL ||
+      !cfg.ONESIGNAL_APP_ID
+    ) {
+
+      throw new Error(
+        'Konfigurasi PushHost belum lengkap.'
+      );
+
+    }
+
+
+    const result =
+      await jsonp({
+
+        push: 'activationInfo',
+
+        activate: token,
+
+        m: madrasahId
+
+      });
+
+
+    if (
+      !result ||
+      !result.success
+    ) {
+
+      throw new Error(
+        result?.message ||
+        'Link aktivasi tidak valid atau sudah kedaluwarsa.'
+      );
+
+    }
+
+
+    return result.data;
+
+  }
+
+
+  /*
+   * Inisialisasi OneSignal.
+   *
+   * PENTING:
+   * File worker berada di:
+   *
+   * /absensi-push/OneSignalSDKWorker.js
+   *
+   * sehingga path harus menunjuk ke folder tersebut.
+   */
+  async function initOneSignal() {
+
+    window.OneSignalDeferred =
+      window.OneSignalDeferred || [];
+
+
+    return new Promise((resolve, reject) => {
+
+      window.OneSignalDeferred.push(
+        async function(OneSignal) {
+
+          try {
+
+            await OneSignal.init({
+
+              appId:
+                cfg.ONESIGNAL_APP_ID,
+
+              serviceWorkerPath:
+                'absensi-push/OneSignalSDKWorker.js',
+
+              serviceWorkerParam: {
+
+                scope:
+                  '/absensi-push/'
+
+              },
+
+              autoResubscribe:
+                true
+
+            });
+
+
+            resolve(OneSignal);
+
+          } catch(error) {
+
+            reject(error);
+
+          }
+
+        }
+      );
+
+    });
+
+  }
+
+
+  /*
+   * Menunggu sampai OneSignal benar-benar
+   * mendapatkan Push Subscription + Push Token.
+   *
+   * Subscription ID saja TIDAK cukup.
+   */
+  async function waitForPushSubscription(
+    OneSignal,
+    timeoutMs = 30000
+  ) {
+
+    const started =
+      Date.now();
+
+
+    while (
+      Date.now() - started <
+      timeoutMs
+    ) {
+
+      const subscription =
+        OneSignal
+          ?.User
+          ?.PushSubscription;
+
+
+      const subscriptionId =
+        subscription?.id || null;
+
+
+      const pushToken =
+        subscription?.token || null;
+
+
+      const optedIn =
+        subscription?.optedIn === true;
+
+
+      if (
+        subscriptionId &&
+        pushToken &&
+        optedIn
+      ) {
+
+        return {
+
+          subscriptionId,
+
+          pushToken
+
+        };
+
+      }
+
+
+      await new Promise(
+        resolve =>
+          setTimeout(resolve, 500)
+      );
+
+    }
+
+
+    throw new Error(
+      'OneSignal belum mendapatkan Push Token. Pastikan izin notifikasi sudah diizinkan dan Service Worker berhasil aktif.'
+    );
+
+  }
+
+
+  /*
+   * Proses aktivasi.
+   */
+  async function activate() {
+
+    btn.disabled = true;
+
+    btn.textContent =
+      'MEMPROSES...';
+
+
+    try {
+
+      /*
+       * Pastikan informasi aktivasi tersedia.
+       */
+      if (!activation) {
+
+        activation =
+          await verifyActivation();
+
+      }
+
+
+      /*
+       * Inisialisasi OneSignal.
+       */
+      const OneSignal =
+        await initOneSignal();
+
+
+      /*
+       * Pastikan browser mendukung Web Push.
+       */
+      if (
+        !OneSignal
+          .Notifications
+          .isPushSupported()
+      ) {
+
+        throw new Error(
+          'Browser/perangkat ini tidak mendukung Web Push.'
+        );
+
+      }
+
+
+      /*
+       * Cek permission sebelum meminta.
+       */
+      const permissionBefore =
+        Notification.permission;
+
+
+      if (
+        permissionBefore ===
+        'denied'
+      ) {
+
+        throw new Error(
+          'Izin notifikasi pada situs ini ditolak. Reset izin situs ini lalu buka ulang link aktivasi.'
+        );
+
+      }
+
+
+      /*
+       * Minta izin notifikasi.
+       */
+      await OneSignal
+        .Notifications
+        .requestPermission();
+
+
+      if (
+        Notification.permission !==
+        'granted'
+      ) {
+
+        throw new Error(
+          'Izin notifikasi belum diberikan.'
+        );
+
+      }
+
+
+      /*
+       * External ID guru.
+       */
+      const externalId =
+        madrasahId +
+        ':' +
+        String(
+          activation.kodeGuru || ''
+        );
+
+
+      /*
+       * Hubungkan user OneSignal
+       * dengan guru.
+       */
+      await OneSignal.login(
+        externalId
+      );
+
+
+      /*
+       * Pastikan subscription opt-in.
+       */
+      await OneSignal
+        .User
+        .PushSubscription
+        .optIn();
+
+
+      /*
+       * Tunggu Subscription ID +
+       * Push Token + optedIn.
+       */
+      const subscription =
+        await waitForPushSubscription(
+          OneSignal
+        );
+
+
+      /*
+       * Simpan subscription ke GAS.
+       *
+       * Kegagalan push tidak membatalkan
+       * proses ABSENSI karena fungsi ini
+       * hanya digunakan pada aktivasi.
+       */
+      const saved =
+        await jsonp({
+
+          push:
+            'register',
+
+          activate:
+            token,
+
+          m:
+            madrasahId,
+
+          subscriptionId:
+            subscription.subscriptionId,
+
+          deviceLabel:
+            navigator.userAgent
+              .slice(0, 120)
+
+        });
+
+
+      if (
+        !saved ||
+        !saved.success
+      ) {
+
+        throw new Error(
+          saved?.message ||
+          'Subscription gagal disimpan.'
+        );
+
+      }
+
+
+      /*
+       * Berhasil.
+       */
+      btn.textContent =
+        '✅ NOTIFIKASI AKTIF';
+
+
+      setStatus(
+        'Notifikasi berhasil diaktifkan pada perangkat ini.',
+        'ok'
+      );
+
+
+      btn.disabled = true;
+
+
+    } catch(error) {
+
+      console.error(
+        'Push activation error:',
+        error
+      );
+
+
+      setStatus(
+        error?.message ||
+        'Gagal mengaktifkan notifikasi.',
+        'err'
+      );
+
+
+      btn.disabled = false;
+
+
+      btn.textContent =
+        '🔔 IZINKAN NOTIFIKASI';
+
+    }
+
+  }
+
+
+  /*
+   * Menyimpan data aktivasi
+   * setelah link berhasil diverifikasi.
+   */
+  let activation = null;
+
+
+  /*
+   * Pemeriksaan awal link.
+   */
+  (async function start() {
+
+    try {
+
+      activation =
+        await verifyActivation();
+
+
+      intro.textContent =
+        'Kode guru ' +
+        (activation.kodeGuru || '-') +
+        ' terverifikasi. Klik tombol untuk mengaktifkan notifikasi.';
+
+
+      btn.disabled = false;
+
+
+      setStatus(
+        'Siap mengaktifkan notifikasi.',
+        'muted'
+      );
+
+
+    } catch(error) {
+
+      console.error(
+        'Activation verification error:',
+        error
+      );
+
+
+      intro.textContent =
+        'Aktivasi tidak dapat dilanjutkan.';
+
+
+      setStatus(
+        error?.message ||
+        'Link aktivasi tidak valid.',
+        'err'
+      );
+
+    }
+
+  })();
+
+
+  btn.addEventListener(
+    'click',
+    activate
+  );
+
+
 })();
 </script>
+
 </body>
 </html>
