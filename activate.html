@@ -365,13 +365,14 @@ button:disabled{
 
   /*
    * Menunggu sampai OneSignal benar-benar
-   * mendapatkan Push Subscription + Push Token.
+   * mendapatkan Push Subscription yang aktif.
    *
-   * Subscription ID saja TIDAK cukup.
+   * Push Token tidak dijadikan syarat registrasi lokal karena OneSignal
+   * dapat menyelesaikan token internal setelah subscription terbentuk.
    */
   async function waitForPushSubscription(
     OneSignal,
-    timeoutMs = 30000
+    timeoutMs = 60000
   ) {
 
     const started =
@@ -392,7 +393,6 @@ button:disabled{
       const subscriptionId =
         subscription?.id || null;
 
-
       const pushToken =
         subscription?.token || null;
 
@@ -401,17 +401,26 @@ button:disabled{
         subscription?.optedIn === true;
 
 
+      // The GAS registration only needs the OneSignal Subscription ID.
+      // PushToken is managed internally by OneSignal and may become
+      // available after the subscription itself is already valid.
+      // Requiring token here caused a false activation failure on some
+      // mobile browsers even though a valid subscription already existed.
       if (
         subscriptionId &&
-        pushToken &&
         optedIn
       ) {
+
+        console.log('[OneSignal] SUBSCRIPTION READY', {
+          subscriptionId,
+          hasPushToken: !!pushToken,
+          optedIn
+        });
 
         return {
 
           subscriptionId,
-
-          pushToken
+          pushToken: pushToken || ''
 
         };
 
@@ -427,7 +436,7 @@ button:disabled{
 
 
     throw new Error(
-      'OneSignal belum mendapatkan Push Token. Pastikan izin notifikasi sudah diizinkan dan Service Worker berhasil aktif.'
+      'OneSignal belum mendapatkan Push Subscription yang aktif. Pastikan izin notifikasi sudah diizinkan dan Service Worker berhasil aktif.'
     );
 
   }
