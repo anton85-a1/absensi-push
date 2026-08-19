@@ -113,10 +113,7 @@ button:disabled{
 
   const cfg = window.PUSH_CONFIG || {};
 
-  const qs =
-    new URLSearchParams(
-      location.search
-    );
+  const qs = new URLSearchParams(location.search);
 
   const token =
     (qs.get('activate') || '').trim();
@@ -134,13 +131,9 @@ button:disabled{
     document.getElementById('status');
 
 
-  function setStatus(
-    text,
-    cls = 'muted'
-  ) {
+  function setStatus(text, cls='muted') {
 
-    status.textContent =
-      text;
+    status.textContent = text;
 
     status.className =
       'status ' + cls;
@@ -149,150 +142,117 @@ button:disabled{
 
 
   /*
-   * ============================================================
-   * JSONP KE GOOGLE APPS SCRIPT
-   * ============================================================
+   * JSONP ke Google Apps Script.
    */
   function jsonp(params) {
 
-    return new Promise(
-      (resolve, reject) => {
+    return new Promise((resolve, reject) => {
 
-        const callback =
-          '__pushHostCb_' +
-          Date.now() +
-          '_' +
-          Math.random()
-            .toString(36)
-            .slice(2);
+      const callback =
+        '__pushHostCb_' +
+        Date.now() +
+        '_' +
+        Math.random()
+          .toString(36)
+          .slice(2);
 
-        const script =
-          document.createElement(
-            'script'
-          );
+      const script =
+        document.createElement('script');
 
-        let done = false;
+      let done = false;
 
+      const cleanup = () => {
 
-        const cleanup = () => {
+        try {
+          delete window[callback];
+        } catch(e) {}
 
-          try {
+        script.remove();
 
-            delete window[
-              callback
-            ];
-
-          } catch(e) {}
-
-          script.remove();
-
-        };
+      };
 
 
-        const finish =
-          (fn, value) => {
+      const finish = (fn, value) => {
 
-            if (done) return;
+        if (done) return;
 
-            done = true;
+        done = true;
 
-            clearTimeout(
-              timer
-            );
+        clearTimeout(timer);
 
-            cleanup();
+        cleanup();
 
-            fn(value);
+        fn(value);
 
-          };
+      };
 
 
-        const timer =
-          setTimeout(
-            () => {
+      const timer = setTimeout(() => {
 
-              finish(
-                reject,
-                new Error(
-                  'Google Apps Script tidak merespons. Pastikan Web App sudah dideploy sebagai versi terbaru.'
-                )
-              );
-
-            },
-            20000
-          );
-
-
-        window[callback] =
-          data =>
-            finish(
-              resolve,
-              data
-            );
-
-
-        const url =
-          new URL(
-            cfg.GAS_WEB_APP_URL
-          );
-
-
-        Object.entries(params)
-          .forEach(
-            ([k, v]) => {
-
-              url.searchParams.set(
-                k,
-                String(v)
-              );
-
-            }
-          );
-
-
-        url.searchParams.set(
-          'callback',
-          callback
+        finish(
+          reject,
+          new Error(
+            'Google Apps Script tidak merespons. Pastikan Web App sudah dideploy sebagai versi terbaru.'
+          )
         );
 
-
-        script.src =
-          url.toString();
+      }, 20000);
 
 
-        script.onerror = () => {
+      window[callback] =
+        data => finish(resolve, data);
 
-          finish(
-            reject,
-            new Error(
-              'Gagal menghubungi Google Apps Script.'
-            )
+
+      const url =
+        new URL(cfg.GAS_WEB_APP_URL);
+
+
+      Object.entries(params)
+        .forEach(([k, v]) => {
+
+          url.searchParams.set(
+            k,
+            String(v)
           );
 
-        };
+        });
 
 
-        document.head.appendChild(
-          script
+      url.searchParams.set(
+        'callback',
+        callback
+      );
+
+
+      script.src =
+        url.toString();
+
+
+      script.onerror = () => {
+
+        finish(
+          reject,
+          new Error(
+            'Gagal menghubungi Google Apps Script.'
+          )
         );
 
-      }
-    );
+      };
+
+
+      document.head.appendChild(script);
+
+    });
 
   }
 
 
   /*
-   * ============================================================
-   * VERIFIKASI LINK AKTIVASI MELALUI GAS
-   * ============================================================
+   * Memeriksa link aktivasi melalui GAS.
    */
   async function verifyActivation() {
 
-    if (
-      !token ||
-      !madrasahId
-    ) {
+    if (!token || !madrasahId) {
 
       throw new Error(
         'Link aktivasi tidak lengkap.'
@@ -316,14 +276,11 @@ button:disabled{
     const result =
       await jsonp({
 
-        push:
-          'activationInfo',
+        push: 'activationInfo',
 
-        activate:
-          token,
+        activate: token,
 
-        m:
-          madrasahId
+        m: madrasahId
 
       });
 
@@ -347,94 +304,70 @@ button:disabled{
 
 
   /*
-   * ============================================================
-   * INISIALISASI ONESIGNAL
-   * ============================================================
+   * Inisialisasi OneSignal.
    *
-   * PERUBAHAN PENTING DARI BASELINE:
+   * PENTING:
+   * File worker berada di:
    *
-   * Sebelumnya:
+   * /absensi-push/OneSignalSDKWorker.js
    *
-   *   absensi-push/OneSignalSDKWorker.js
-   *
-   * Sekarang:
-   *
-   *   /absensi-push/OneSignalSDKWorker.js
-   *
-   * Absolute path digunakan agar browser tidak membentuk
-   * path ganda:
-   *
-   *   /absensi-push/absensi-push/...
-   *
-   * Service Worker memang berada di:
-   *
-   *   /absensi-push/OneSignalSDKWorker.js
-   *
-   * ============================================================
+   * sehingga path harus menunjuk ke folder tersebut.
    */
   async function initOneSignal() {
 
     window.OneSignalDeferred =
-      window.OneSignalDeferred ||
-      [];
+      window.OneSignalDeferred || [];
 
 
-    return new Promise(
-      (resolve, reject) => {
+    return new Promise((resolve, reject) => {
 
-        window.OneSignalDeferred.push(
-          async function(
-            OneSignal
-          ) {
+      window.OneSignalDeferred.push(
+        async function(OneSignal) {
 
-            try {
+          try {
 
-              await OneSignal.init({
+            await OneSignal.init({
 
-                appId:
-                  cfg.ONESIGNAL_APP_ID,
+              appId:
+                cfg.ONESIGNAL_APP_ID,
 
-                serviceWorkerPath:
-                  '/absensi-push/OneSignalSDKWorker.js',
+              serviceWorkerPath:
+                'absensi-push/OneSignalSDKWorker.js',
 
-                serviceWorkerParam: {
+              serviceWorkerParam: {
 
-                  scope:
-                    '/absensi-push/'
+                scope:
+                  '/absensi-push/'
 
-                },
+              },
 
-                autoResubscribe:
-                  true
+              autoResubscribe:
+                true
 
-              });
+            });
 
 
-              resolve(
-                OneSignal
-              );
+            resolve(OneSignal);
 
-            } catch(error) {
+          } catch(error) {
 
-              reject(
-                error
-              );
-
-            }
+            reject(error);
 
           }
-        );
 
-      }
-    );
+        }
+      );
+
+    });
 
   }
 
 
   /*
-   * ============================================================
-   * MENUNGGU PUSH SUBSCRIPTION
-   * ============================================================
+   * Menunggu sampai OneSignal benar-benar
+   * mendapatkan Push Subscription + Push Token.
+   *
+   * Subscription ID saja TIDAK cukup.
    */
   async function waitForPushSubscription(
     OneSignal,
@@ -446,8 +379,7 @@ button:disabled{
 
 
     while (
-      Date.now() -
-      started <
+      Date.now() - started <
       timeoutMs
     ) {
 
@@ -458,13 +390,11 @@ button:disabled{
 
 
       const subscriptionId =
-        subscription?.id ||
-        null;
+        subscription?.id || null;
 
 
       const pushToken =
-        subscription?.token ||
-        null;
+        subscription?.token || null;
 
 
       const optedIn =
@@ -490,10 +420,7 @@ button:disabled{
 
       await new Promise(
         resolve =>
-          setTimeout(
-            resolve,
-            500
-          )
+          setTimeout(resolve, 500)
       );
 
     }
@@ -507,14 +434,11 @@ button:disabled{
 
 
   /*
-   * ============================================================
-   * PROSES AKTIVASI
-   * ============================================================
+   * Proses aktivasi.
    */
   async function activate() {
 
-    btn.disabled =
-      true;
+    btn.disabled = true;
 
     btn.textContent =
       'MEMPROSES...';
@@ -602,8 +526,7 @@ button:disabled{
         madrasahId +
         ':' +
         String(
-          activation.kodeGuru ||
-          ''
+          activation.kodeGuru || ''
         );
 
 
@@ -626,8 +549,8 @@ button:disabled{
 
 
       /*
-       * Tunggu Subscription ID,
-       * Push Token, dan optedIn.
+       * Tunggu Subscription ID +
+       * Push Token + optedIn.
        */
       const subscription =
         await waitForPushSubscription(
@@ -637,6 +560,10 @@ button:disabled{
 
       /*
        * Simpan subscription ke GAS.
+       *
+       * Kegagalan push tidak membatalkan
+       * proses ABSENSI karena fungsi ini
+       * hanya digunakan pada aktivasi.
        */
       const saved =
         await jsonp({
@@ -655,10 +582,7 @@ button:disabled{
 
           deviceLabel:
             navigator.userAgent
-              .slice(
-                0,
-                120
-              )
+              .slice(0, 120)
 
         });
 
@@ -677,7 +601,7 @@ button:disabled{
 
 
       /*
-       * BERHASIL.
+       * Berhasil.
        */
       btn.textContent =
         '✅ NOTIFIKASI AKTIF';
@@ -689,8 +613,7 @@ button:disabled{
       );
 
 
-      btn.disabled =
-        true;
+      btn.disabled = true;
 
 
     } catch(error) {
@@ -708,8 +631,7 @@ button:disabled{
       );
 
 
-      btn.disabled =
-        false;
+      btn.disabled = false;
 
 
       btn.textContent =
@@ -721,18 +643,14 @@ button:disabled{
 
 
   /*
-   * ============================================================
-   * DATA AKTIVASI
-   * ============================================================
+   * Menyimpan data aktivasi
+   * setelah link berhasil diverifikasi.
    */
-  let activation =
-    null;
+  let activation = null;
 
 
   /*
-   * ============================================================
-   * PEMERIKSAAN AWAL LINK
-   * ============================================================
+   * Pemeriksaan awal link.
    */
   (async function start() {
 
@@ -744,15 +662,11 @@ button:disabled{
 
       intro.textContent =
         'Kode guru ' +
-        (
-          activation.kodeGuru ||
-          '-'
-        ) +
+        (activation.kodeGuru || '-') +
         ' terverifikasi. Klik tombol untuk mengaktifkan notifikasi.';
 
 
-      btn.disabled =
-        false;
+      btn.disabled = false;
 
 
       setStatus(
